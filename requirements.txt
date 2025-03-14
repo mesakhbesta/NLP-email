@@ -1,5 +1,5 @@
 pandas==2.2.3
-re==2.2.1
+re
 Sastrawi==1.0.0
 joblib==1.4.2
 bertopic==0.16.4
