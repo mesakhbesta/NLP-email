@@ -6,7 +6,12 @@ import joblib
 from bertopic import BERTopic
 from huggingface_hub import hf_hub_download
 import asyncio
-asyncio.set_event_loop(asyncio.new_event_loop())
+import asyncio
+try:
+    asyncio.get_event_loop()
+except RuntimeError as e:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
 
 st.sidebar.title("Aplikasi Klasifikasi Kendala 📧")
 
