@@ -11,3 +11,4 @@ Sastrawi==1.0.1
 joblib==1.4.2
 openpyxl
 torch
+asyncio
