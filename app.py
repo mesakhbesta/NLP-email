@@ -5,6 +5,8 @@ from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFacto
 import joblib
 from bertopic import BERTopic
 from huggingface_hub import hf_hub_download
+import asyncio
+asyncio.set_event_loop(asyncio.new_event_loop())
 
 st.sidebar.title("Aplikasi Klasifikasi Kendala 📧")
 
