@@ -1,6 +1,6 @@
 bertopic==0.16.4
 huggingface_hub
-numba==0.53.1
+numba
 hdbscan==0.8.40
 scikit-learn==1.2.2
 umap-learn==0.5.7
