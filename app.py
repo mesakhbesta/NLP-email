@@ -116,7 +116,8 @@ if df is not None:
         return complaint
 
     df['Complaint'] = df['Complaint'].apply(cut_off_general)
-    df['Complaint'] = df['Complaint'] + " " + df['Summary']
+    # Gabungkan Complaint dan Summary (pastikan tidak ada nilai NaN)
+    df['Complaint'] = df['Complaint'].fillna('') + " " + df['Summary'].fillna('')
     subject_pattern = r"(?i)Subject:\s*(Re:\s*FW:|RE:|FW:|PTAsuransiAllianzUtamaIndonesiaPT Asuransi Allianz Utama Indonesia)?\s*"
     df['Complaint'] = df['Complaint'].str.replace(subject_pattern, "", regex=True)
     
@@ -132,12 +133,12 @@ if df is not None:
         text = ' '.join([word for word in text.split() if word not in stopwords])
         return text
 
+    # Bersihkan teks complaint awal
     df['Cleaned_Complaint'] = df['Complaint'].apply(clean_text)
 
     # Menghapus kata-kata yang tidak penting
     words_to_remove = r"\b(terima|kasih|mohon|silakan|untuk|dan|atau|saya|kami|helpdesk|bapak|ibu|segera|harap|apakah|kapan|dapat|tidak|dana|pensiun|sampaikan|konvensional|djakarta|delta|asuransi|ventura|modal|absensi|arahannya|berikut|selalu|maksud|mrisikodapenbuncoid|sistem|mencoba|dibawah|lbbpr|kejadian|arahan|lamp|berhasil|ringkasan|publikasi|sosialisasi|pelaporanid|sultra|penyampaian|surat|yg|satyadhika|bakti|penamaan|menjumpai|progo|group|diisi|terh|login|file|gambar|screenshot|panduan|perhutani|selfassessment|umum|status|keperluan|ulang|publik|lembaga|nomor|petunjuk|dikirimkan|maksud|astra|gb|mesin|terjadi|selfassessment|tanya|reliance|unit|terdaftar|jl|ii|put|nama|muncul|dimaksud|kegiatan|waktu|desember|pkap|life|mengenai|monitoring|ditinjau|dosbnb|pmo|wisma|apuppt|pergada|tombol|bpd|oss|insidentil|psak|pelaksanaan|perkembangan|format|berdasarkan|luar|penguna|hpt|ppt|bambu|nasabah|team|marga|cipayun|star|dipo|finance|menyampaikan|lapor|jasa|pengawasan|dokumen|asuransi|rencana|permohonan|indonesia|allianz|keuangan|otoritas|no|penggunaan|antifraud|penerapan|strategi|fraud|anti|realisasi|saf|tersebut|nya|data|terdapat|periode|melalui|perusahaan|sesuai|melakukan|hak|komplek|laporan|pelaporan|modul|apolo|sebut|terap|email|pt|mohon|sampai|ikut|usaha|dapat|tahun|kini|lalu|kendala|ojk|laku|guna|aplikasi|atas|radius|prawiro|jakarta pusat)\b"
     
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.lower()
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(words_to_remove, "", regex=True)
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bmasuk\b", "login", regex=True)
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\blog-in\b", "login", regex=True)
@@ -146,19 +147,19 @@ if df is not None:
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\baro\b", "administrator responsible officer", regex=True)
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bro\b", "responsible officer", regex=True)
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\s+", " ", regex=True).str.strip()
+    # Pastikan teks benar-benar bersih dengan menerapkan fungsi clean_text lagi (jika diperlukan)
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].apply(clean_text)
 
     st.write("### Final Cleaned Complaint Data")
     st.dataframe(df[['Incident Number', 'Summary', 'Cleaned_Complaint']].head(4))
 
-    # Fungsi untuk memuat model (menggunakan cache agar tidak dimuat ulang setiap kali)
+    # Fungsi untuk memuat model (gunakan cache agar tidak dimuat ulang setiap kali)
     # Tambahkan wrapper untuk SentenceTransformer
     class SentenceTransformerWrapper:
         def __init__(self, model):
             self.model = model
     
         def embed_documents(self, documents, **kwargs):
-            # Hapus parameter 'verbose' jika ada
             kwargs.pop('verbose', None)
             return self.model.encode(documents, show_progress_bar=False, **kwargs)
     
@@ -166,7 +167,6 @@ if df is not None:
             kwargs.pop('verbose', None)
             return self.model.encode(query, **kwargs)
 
-    
     @st.cache_data(show_spinner=False)
     def load_models():
         model_utama = BERTopic.load("topic_model")
@@ -182,7 +182,6 @@ if df is not None:
         model_sub_min1.embedding_model = embedding_model
     
         return model_utama, model_sub_1, model_sub_min1
-
 
     topic_model, sub_topic_model_1, sub_topic_model_min1 = load_models()
 
@@ -250,6 +249,5 @@ if df is not None:
     for idx, row in df_filtered.iterrows():
         st.write("=" * 135)
         st.write(f"**Incident Number**: {row['Incident Number']}")
-        st.write(f"**Complaint**: {row['Complaint']}")
+        st.write(f"**Cleaned Complaint**: {row['Cleaned_Complaint']}")
         st.write("=" * 135)
-        st.write("")
