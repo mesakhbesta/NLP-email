@@ -92,25 +92,49 @@ if df is not None:
     
     df['Cleaned_Complaint'] = df['Complaint'].apply(clean_text)
 
-    words_to_remove = r"\b(" \
-    "terima|kasih|mohon|silakan|untuk|dan|atau|saya|kami|helpdesk|bapak|ibu|segera|harap|apakah|kapan|dapat|tidak|" \
-    "dana|pensiun|sampaikan|djakarta|delta|asuransi|ventura|modal|absensi|arahannya|" \
-    "bapak|ibu|berikut|selalu|maksud|mrisikodapenbuncoid|sistem|mencoba|dibawah|lbbpr|kejadian|" \
-    "arahan|lamp|berhasil|ringkasan|publikasi|sosialisasi|pelaporanid|sultra|penyampaian|" \
-    "surat|yg|satyadhika|bakti|penamaan|menjumpai|progo|group|diisi|terh|login|file|gambar|screenshot|panduan|" \
-    "perhutani|selfassessment|umum|status|keperluan|ulang|publik|" \
-    "lembaga|nomor|petunjuk|dikirimkan|maksud|astra|gb|mesin|" \
-    "terjadi|selfassessment|tanya|reliance|" \
-    "unit|terdaftar|jl|ii|put|nama|muncul|dimaksud|kegiatan|waktu|desember|pkap|life|" \
-    "mengenai|monitoring|ditinjau|dosbnb|pmo|wisma|apuppt|pergada|tombol|bpd|oss|insidentil|" \
-    "psak|pelaksanaan|perkembangan|format|berdasarkan|luar|penguna|hpt|ppt|bambu|nasabah|team|marga|" \
-    "cipayun|star|dipo|finance|menyampaikan|lapor|jasa|pengawasan|dokumen|asuransi|rencana|permohonan|" \
-    "indonesia|allianz|keuangan|otoritas|no|penggunaan|antifraud|penerapan|strategi|fraud|anti|realisasi|saf|tersebut|" \
-    "nya|data|terdapat|periode|melalui|perusahaan|sesuai|melakukan|hak|komplek|laporan|pelaporan|modul|apolo|sebut|" \
-    "terap|email|pt|mohon|sampai|ikut|usaha|dapat|tahun|kini|lalu|kendala|ojk|laku|guna|aplikasi|atas|radius|prawiro|" \
-    "jakarta pusatlapor|client|jasa|web|pengawasan|dokumen|asuransi|rencana|permohonan|indonesia|allianz|keuangan|otoritas|no|penggunaan|antifraud|penerapan|strategi|fraud|anti|realisasi|saf|tersebut|nya|data|terdapat|periode|melalui|perusahaan|sesuai|melakukan|hak|komplek|laporan|pelaporan|modul|apolo|sebut|terap|email|pt|mohon|sampai|ikut|usaha|dapat|tahun|kini|lalu|kendala|ojk|laku|guna|aplikasi|atas|radius|prawiro|jakarta pusat)\b"
+    # Define the list of words to remove
+    words_to_remove = [
+        "terima", "kasih", "mohon", "silakan", "untuk", "dan", "atau", "saya", "kami", 
+        "helpdesk", "bapak", "ibu", "segera", "harap", "apakah", "kapan", "dapat", "tidak",
+        "dana", "pensiun", "sampaikan", "konvensional", "djakarta", "delta", "asuransi", "ventura", 
+        "modal", "absensi", "arahannya", "bapak", "ibu", "berikut", "selalu", "maksud", "mrisikodapenbuncoid",
+        "sistem", "mencoba", "dibawah", "lbbpr", "kejadian", "arahan", "lamp", "berhasil", "ringkasan", 
+        "publikasi", "sosialisasi", "pelaporanid", "sultra", "penyampaian", "surat", "yg", "satyadhika",
+        "bakti", "penamaan", "menjumpai", "progo", "group", "diisi", "terh", "login", "file", "gambar",
+        "screenshot", "panduan", "perhutani", "selfassessment", "umum", "status", "keperluan", "ulang",
+        "publik", "lembaga", "nomor", "petunjuk", "dikirimkan", "maksud", "astra", "gb", "mesin", "terjadi",
+        "selfassessment", "tanya", "reliance", "unit", "terdaftar", "jl", "ii", "put", "nama", "muncul", "dimaksud",
+        "kegiatan", "waktu", "desember", "pkap", "life", "mengenai", "monitoring", "ditinjau", "dosbnb", "pmo", 
+        "wisma", "apuppt", "pergada", "tombol", "bpd", "oss", "insidentil", "psak", "pelaksanaan", "perkembangan", 
+        "format", "berdasarkan", "luar", "penguna", "hpt", "ppt", "bambu", "nasabah", "team", "marga", "cipayun",
+        "star", "dipo", "finance", "menyampaikan", "lapor", "jasa", "pengawasan", "dokumen", "asuransi", "rencana",
+        "permohonan", "indonesia", "allianz", "keuangan", "otoritas", "no", "penggunaan", "antifraud", "penerapan",
+        "strategi", "fraud", "anti", "realisasi", "saf", "tersebut", "nya", "data", "terdapat", "periode", "melalui",
+        "perusahaan", "sesuai", "melakukan", "hak", "komplek", "laporan", "pelaporan", "modul", "apolo", "sebut",
+        "terap", "email", "pt", "mohon", "sampai", "ikut", "usaha", "dapat", "tahun", "kini", "lalu", "kendala",
+        "ojk", "laku", "guna", "aplikasi", "atas", "radius", "prawiro", "jakarta", "pusatlapor", "client", "jasa",
+        "web", "pengawasan", "dokumen", "asuransi", "rencana", "permohonan", "indonesia", "allianz", "keuangan",
+        "otoritas", "no", "penggunaan", "antifraud", "penerapan", "strategi", "fraud", "anti", "realisasi", "saf",
+        "tersebut", "nya", "data", "terdapat", "periode", "melalui", "perusahaan", "sesuai", "melakukan", "hak",
+        "komplek", "laporan", "pelaporan", "modul", "apolo", "sebut", "terap", "email", "pt", "mohon", "sampai",
+        "ikut", "usaha", "dapat", "tahun", "kini", "lalu", "kendala", "ojk", "laku", "guna", "aplikasi", "atas",
+        "radius", "prawiro", "jakarta", "pusat"
+    ]
     
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(words_to_remove, "", regex=True)
+    # Compile the regex pattern for word boundaries
+    pattern = r'\b(?:' + '|'.join(map(re.escape, words_to_remove)) + r')\b'
+    
+    # Function to clean the complaint text by removing unwanted words
+    def clean_text(text):
+        # Apply the regex substitution to remove the specified words
+        text = re.sub(pattern, "", text)
+        # Remove extra spaces caused by the word removal
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+    
+    # Apply the cleaning function to 'Cleaned_Complaint'
+    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].apply(clean_text)
+
 
     # Display cleaned complaints
     st.write("### Final Cleaned Complaint Data")
@@ -126,13 +150,15 @@ if df is not None:
         random_state=1337
     )
 
-    # Initialize BERTopic with UMAP model
-    topic_model = BERTopic(
-        language="indonesian",
-        umap_model=umap_model,
-        calculate_probabilities=True,
-    )
-    topics, probabilities = topic_model.fit_transform(df['Cleaned_Complaint'])
+    # Add spinner for training
+    with st.spinner('Training model... Please wait'):
+        # Initialize BERTopic with UMAP model
+        topic_model = BERTopic(
+            language="indonesian",
+            umap_model=umap_model,
+            calculate_probabilities=True,
+        )
+        topics, probabilities = topic_model.fit_transform(df['Cleaned_Complaint'])
 
     # Display the topics
     topic_info = pd.DataFrame(topic_model.get_topic_info())
