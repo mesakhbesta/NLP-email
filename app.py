@@ -16,25 +16,23 @@ except RuntimeError as e:
 
 # Streamlit UI Setup
 st.sidebar.title("Aplikasi Klasifikasi Kendala 📧")
-input_method = st.sidebar.radio("Pilih Metode Input", ["Upload File"])
 st.sidebar.write("Analisis Klasifikasi Email")
 st.sidebar.write("Developed by Mesakh Besta 🚀")
 st.title("Email Complaint Processing and Topic Classification")
 st.write("Upload file Excel atau CSV untuk lihat distribusi topik beserta full teks Cleaned Complaint.")
 st.markdown('<p style="color:red;">(Isi file Excel: Incident Number, Summary, Notes)</p>', unsafe_allow_html=True)
 
-# Input method (file upload)
-if input_method == "Upload File":
-    uploaded_file = st.file_uploader("Upload your Excel atau CSV file", type=["xlsx", "csv"])
-    if uploaded_file is not None:
-        if uploaded_file.name.endswith("xlsx"):
-            df = pd.read_excel(uploaded_file)
-        else:
-            df = pd.read_csv(uploaded_file)
-        st.success("File berhasil diupload!")
+# Input method (file upload only)
+uploaded_file = st.file_uploader("Upload your Excel atau CSV file", type=["xlsx", "csv"])
+if uploaded_file is not None:
+    if uploaded_file.name.endswith("xlsx"):
+        df = pd.read_excel(uploaded_file)
     else:
-        st.info("Silakan upload file Excel atau CSV untuk memulai proses.")
-        df = None
+        df = pd.read_csv(uploaded_file)
+    st.success("File berhasil diupload!")
+else:
+    st.info("Silakan upload file Excel atau CSV untuk memulai proses.")
+    df = None
 
 # Proses jika dataframe tidak kosong
 if df is not None:
@@ -96,7 +94,7 @@ if df is not None:
 
     words_to_remove = r"\b(" \
     "terima|kasih|mohon|silakan|untuk|dan|atau|saya|kami|helpdesk|bapak|ibu|segera|harap|apakah|kapan|dapat|tidak|" \
-    "dana|pensiun|sampaikan|konvensional|djakarta|delta|asuransi|ventura|modal|absensi|arahannya|" \
+    "dana|pensiun|sampaikan|djakarta|delta|asuransi|ventura|modal|absensi|arahannya|" \
     "bapak|ibu|berikut|selalu|maksud|mrisikodapenbuncoid|sistem|mencoba|dibawah|lbbpr|kejadian|" \
     "arahan|lamp|berhasil|ringkasan|publikasi|sosialisasi|pelaporanid|sultra|penyampaian|" \
     "surat|yg|satyadhika|bakti|penamaan|menjumpai|progo|group|diisi|terh|login|file|gambar|screenshot|panduan|" \
@@ -112,60 +110,35 @@ if df is not None:
     "terap|email|pt|mohon|sampai|ikut|usaha|dapat|tahun|kini|lalu|kendala|ojk|laku|guna|aplikasi|atas|radius|prawiro|" \
     "jakarta pusatlapor|client|jasa|web|pengawasan|dokumen|asuransi|rencana|permohonan|indonesia|allianz|keuangan|otoritas|no|penggunaan|antifraud|penerapan|strategi|fraud|anti|realisasi|saf|tersebut|nya|data|terdapat|periode|melalui|perusahaan|sesuai|melakukan|hak|komplek|laporan|pelaporan|modul|apolo|sebut|terap|email|pt|mohon|sampai|ikut|usaha|dapat|tahun|kini|lalu|kendala|ojk|laku|guna|aplikasi|atas|radius|prawiro|jakarta pusat)\b"
     
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.lower()
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(words_to_remove, "", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bmasuk\b", "login", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\blog-in\b", "login", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bguest\b", "admin", regex=True)
 
-    st.write(df)
-    st.sidebar.write("Unduh file yang telah diproses")
-    @st.cache_data
-    def convert_df(df):
-        return df.to_csv(index=False).encode('utf-8')
+    # Display cleaned complaints
+    st.write("### Final Cleaned Complaint Data")
+    st.dataframe(df[['Incident Number', 'Summary', 'Cleaned_Complaint']].head(4))
 
-    csv = convert_df(df)
-    st.sidebar.download_button(
-        label="Download hasil CSV",
-        data=csv,
-        file_name="processed_complaints.csv",
-        mime="text/csv"
+    # UMAP model for dimensionality reduction
+    umap_model = UMAP(
+        n_neighbors=10,
+        n_components=5,
+        min_dist=0.0,
+        metric='cosine',
+        low_memory=False,
+        random_state=1337
     )
 
-    # Proses klasifikasi topik menggunakan BERTopic
-    st.sidebar.write("Proses Klasifikasi Topik 📊")
-    if st.sidebar.button('Mulai Klasifikasi'):
-        # Model BERTopic
-        try:
-            # Cek apakah model sudah ada
-            model_path = "topic_model"
-            topic_model = None
-            if st.sidebar.checkbox('Gunakan Model yang Disimpan'):
-                try:
-                    topic_model = joblib.load(model_path)
-                    st.sidebar.success("Model BERTopic berhasil dimuat!")
-                except:
-                    st.sidebar.warning("Model tidak ditemukan. Akan dilatih ulang!")
+    # Initialize BERTopic with UMAP model
+    topic_model = BERTopic(
+        language="indonesian",
+        umap_model=umap_model,
+        calculate_probabilities=True,
+    )
+    topics, probabilities = topic_model.fit_transform(df['Cleaned_Complaint'])
 
-            if topic_model is None:
-                # Latih model BERTopic
-                st.sidebar.write("Melatih model BERTopic...")
-                topic_model = BERTopic(nr_topics="auto")
-                topics, _ = topic_model.fit_transform(df['Cleaned_Complaint'])
+    # Display the topics
+    topic_info = pd.DataFrame(topic_model.get_topic_info())
+    st.write("### Topics found in the data")
+    st.write(topic_info)
 
-                # Simpan model
-                joblib.dump(topic_model, model_path)
-                st.sidebar.success("Model BERTopic berhasil dilatih dan disimpan!")
-
-            # Menambahkan kolom topik ke dataframe
-            df['Topic'] = topic_model.transform(df['Cleaned_Complaint'])[0]
-
-            # Menampilkan hasil klasifikasi topik
-            st.write("Hasil Klasifikasi Topik")
-            st.write(df[['Complaint', 'Cleaned_Complaint', 'Topic']])
-
-            # Tampilkan visualisasi distribusi topik
-            st.write("Visualisasi Distribusi Topik 📊")
-            topic_model.visualize_topics()
-        except Exception as e:
-            st.sidebar.error(f"Terjadi kesalahan: {str(e)}")
+    st.write("### Complete Data with Identified Topics")
+    df['Topic'] = topics
+    st.dataframe(df[['Incident Number', 'Summary', 'Cleaned_Complaint', 'Topic']])
