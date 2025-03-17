@@ -157,12 +157,15 @@ if df is not None:
         def __init__(self, model):
             self.model = model
     
-        def embed_documents(self, documents):
-            # Menggunakan encode dengan parameter yang sesuai
-            return self.model.encode(documents, show_progress_bar=False)
+        def embed_documents(self, documents, **kwargs):
+            # Hapus parameter 'verbose' jika ada
+            kwargs.pop('verbose', None)
+            return self.model.encode(documents, show_progress_bar=False, **kwargs)
     
-        def embed_query(self, query):
-            return self.model.encode(query)
+        def embed_query(self, query, **kwargs):
+            kwargs.pop('verbose', None)
+            return self.model.encode(query, **kwargs)
+
     
     @st.cache_data(show_spinner=False)
     def load_models():
