@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import re
@@ -7,16 +6,16 @@ import joblib
 from bertopic import BERTopic
 from huggingface_hub import hf_hub_download
 import asyncio
-import asyncio
 from umap import UMAP
+
+# Set event loop
 try:
     asyncio.get_event_loop()
 except RuntimeError as e:
     asyncio.set_event_loop(asyncio.new_event_loop())
 
-
+# Streamlit UI Setup
 st.sidebar.title("Aplikasi Klasifikasi Kendala 📧")
-
 input_method = st.sidebar.radio("Pilih Metode Input", ["Upload File", "Input Manual"])
 st.sidebar.write("Analisis Klasifikasi Email")
 st.sidebar.write("Developed by Mesakh Besta 🚀")
@@ -24,7 +23,7 @@ st.title("Email Complaint Processing and Topic Classification")
 st.write("Upload file Excel atau CSV atau ketik manual complaint untuk lihat distribusi topik beserta full teks Cleaned Complaint.")
 st.markdown('<p style="color:red;">(Isi file Excel: Incident Number, Summary, Notes)</p>', unsafe_allow_html=True)
 
-
+# Input method (file upload or manual input)
 if input_method == "Upload File":
     uploaded_file = st.file_uploader("Upload your Excel atau CSV file", type=["xlsx", "csv"])
     if uploaded_file is not None:
@@ -45,12 +44,15 @@ else:
         st.info("Silakan ketik complaint di text box untuk memulai proses.")
         df = None
 
+# Proses jika dataframe tidak kosong
 if df is not None:
     def remove_dear_ojk(text):
         if isinstance(text, str):
             return re.sub(r"Dear\s*Bapak/Ibu\s*Helpdesk\s*OJK", "", text)
         return text
+    
     df['Notes'] = df['Notes'].apply(remove_dear_ojk)
+
     def extract_complaint(text):
         if not isinstance(text, str):
             return "Bagian komplain tidak ditemukan."
@@ -71,27 +73,35 @@ if df is not None:
         for pattern in sensitive_info_patterns:
             text = re.sub(pattern, "", text)
         return text if text else "Bagian komplain tidak ditemukan."
+    
     df['Complaint'] = df.apply(lambda row: extract_complaint(row['Notes']), axis=1)
+
     def cut_off_general(complaint):
         cut_off_keywords = ["PT Mandiri Utama FinanceSent: Wednesday, November 6, 2024 9:11 AMTo", "Atasdan kerjasama, kami ucapkan h Biro Hukum dan KepatuhanPT Jasa Raharja (Persero)Jl. HR Rasuna Said Kav. C-2 12920Jakarta Selatan", "h._________", "h Imawan FPT ABC Multifinance Pesan File Kirim (PAPUPPK/2024-12-31/Rutin/Gagal)Kotak MasukTelusuri semua pesan berlabel Kotak MasukHapus", "KamiBapak/Ibu untuk pencerahannya", "kami ucapkan h. ,", "-- , DANA PENSIUN BPD JAWA", "sDian PENYANGKALAN.", "------------------------Dari: Adrian", "hormat saya RidwanForwarded", "--h, DANA PENSIUN WIJAYA", "Mohon InfonyahKantor", "an arahannya dari Bapak/ Ibu", "ya untuk di check ya.Thank", "Kendala:Thank youAddelin", ",Sekretaris DAPENUrusan Humas & ProtokolTazkya", "Mohon arahannya.Berikut screenshot", "Struktur_Data_Pelapor_IJK_(PKAP_EKAP)_-_Final_2024", "Annie Clara DesiantyComplianceIndonesia", "Dian Rosmawati RambeCompliance", "Beararti apakah,Tri WahyuniCompliance DeptPT.", "Dengan alamat email yang didaftarkan", "dan arahan", ",AJB Bumiputera", "’h sebelumnya Afriyanty", "PENYANGKALAN.", "h Dana Pensiun PKT", ", h , Tasya PT.", "Contoh: 10.00", "hAnnisa Adelya SerawaiPT Fazz", "sebagaimana gambar di bawah ini", "PT Asuransi Jiwa SeaInsure On Fri", "hJana MaesiatiBanking ReportFinance", "Tembusan", "Sebagai referensi", "hAdriansyah", "h atas bantuannya Dwi Anggina", "PT Asuransi Jiwa SeaInsure", "dengan notifikasi dibawah ini", "Terima ksh", ": DISCLAIMER", "Sebagai informasi", "nya. h.Kind s,Melati", ": DISCLAIMER", "Petugas AROPT", "h,Julianto", "h,Hernawati", "Dana Pensiun Syariah", ",Tria NoviatyStrategic"]
         for keyword in cut_off_keywords:
             if keyword in complaint:
                 complaint = complaint.split(keyword)[0]
         return complaint
+    
     df['Complaint'] = df['Complaint'].apply(cut_off_general)
     df['Complaint'] = df['Complaint'] + " " + df['Summary']
+    
+    # Remove subject prefix from complaints
     subject_pattern = r"(?i)Subject:\s*(Re:\s*FW:|RE:|FW:|PTAsuransiAllianzUtamaIndonesiaPT Asuransi Allianz Utama Indonesia)?\s*"
     df['Complaint'] = df['Complaint'].str.replace(subject_pattern, "", regex=True)
+    
     stopword_factory = StopWordRemoverFactory()
     stopwords = stopword_factory.get_stop_words()
+
     def clean_text(text):
         text = text.lower()
         text = re.sub(r'[^a-z\s]', '', text)
         text = re.sub(r'\s+', ' ', text).strip()
         text = ' '.join([word for word in text.split() if word not in stopwords])
         return text
-    df['Cleaned_Complaint'] = df['Complaint'].apply(clean_text)
     
+    df['Cleaned_Complaint'] = df['Complaint'].apply(clean_text)
+
     words_to_remove = r"\b(" \
     "terima|kasih|mohon|silakan|untuk|dan|atau|saya|kami|helpdesk|bapak|ibu|segera|harap|apakah|kapan|dapat|tidak|" \
     "dana|pensiun|sampaikan|konvensional|djakarta|delta|asuransi|ventura|modal|absensi|arahannya|" \
@@ -119,10 +129,12 @@ if df is not None:
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\baro\b", "administrator responsible officer", regex=True)
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bro\b", "responsible officer", regex=True)
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\s+", " ", regex=True).str.strip()
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].apply(lambda x: clean_text(x))
+
+    # Display cleaned complaints
     st.write("### Final Cleaned Complaint Data")
     st.dataframe(df[['Incident Number', 'Summary', 'Cleaned_Complaint']].head(4))
-    # UMAP model yang digunakan
+
+    # UMAP model for dimensionality reduction
     umap_model = UMAP(
         n_neighbors=10,
         n_components=5,
@@ -132,7 +144,7 @@ if df is not None:
         random_state=1337
     )
 
-    # Inisialisasi BERTopic dengan UMAP model
+    # Initialize BERTopic with UMAP model
     topic_model = BERTopic(
         language="indonesian",
         umap_model=umap_model,
@@ -142,23 +154,13 @@ if df is not None:
     with st.spinner("Melatih model BERTopic baru..."):
         topic_model.fit(df['Cleaned_Complaint'].tolist())
         topics = topic_model.get_topics()
-        df['Topic'] = topic_model.transform(df['Cleaned_Complaint'].tolist())
+        df['Topic'] = topic_model.transform(df['Cleaned_Complaint'].tolist())[0]
+        st.success("Model BERTopic selesai dilatih!")
 
-    topic_counts = df['Topic'].value_counts().reset_index()
-    topic_counts.columns = ['Topic', 'Count']
-    st.write("#### Distribusi Topik Final:")
-    st.dataframe(topic_counts)
+    # Show topics and distribution
+    st.write("### Distribusi Topik")
+    st.write(topic_model.get_topic_info())
 
-    unique_topics = sorted(df['Topic'].unique().tolist())
-    selected_topic = st.selectbox("Pilih Topik untuk ditampilkan", ["Semua Topik"] + unique_topics)
-    if selected_topic != "Semua Topik":
-        df_filtered = df[df['Topic'] == selected_topic]
-    else:
-        df_filtered = df
+    st.write("### Keluhan dengan Topik Terkait")
+    st.write(df[['Incident Number', 'Cleaned_Complaint', 'Topic']].head(10))
 
-    st.write("#### Full Text of Cleaned Complaint per Incident:")
-    for idx, row in df_filtered.iterrows():
-        st.write("=" * 135)
-        st.write(f"**Incident Number**: {row['Incident Number']}")
-        st.write(f"**Cleaned Complaint**: {row['Cleaned_Complaint']}")
-        st.write("=" * 135)
