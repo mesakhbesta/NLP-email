@@ -1,3 +1,12 @@
+import os
+os.environ["STREAMLIT_FILE_WATCHER_TYPE"] = "none"  # Nonaktifkan file watcher Streamlit
+
+import asyncio
+try:
+    loop = asyncio.get_running_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 import streamlit as st
 import pandas as pd
 import re
