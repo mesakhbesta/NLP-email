@@ -176,4 +176,4 @@ if df is not None:
 
     st.write("### Complete Data with Identified Topics")
     df['Topic'] = topics
-    st.dataframe(df[['Incident Number', 'Summary', 'Cleaned_Complaint', 'Topic']])
+    st.dataframe(df[['Incident Number', 'Summary','Notes",'Complaint', 'Topic']])
