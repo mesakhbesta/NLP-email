@@ -152,21 +152,34 @@ if df is not None:
     st.dataframe(df[['Incident Number', 'Summary', 'Cleaned_Complaint']].head(4))
 
     # Fungsi untuk memuat model (menggunakan cache agar tidak dimuat ulang setiap kali)
+    # Tambahkan wrapper untuk SentenceTransformer
+    class SentenceTransformerWrapper:
+        def __init__(self, model):
+            self.model = model
+    
+        def embed_documents(self, documents):
+            # Menggunakan encode dengan parameter yang sesuai
+            return self.model.encode(documents, show_progress_bar=False)
+    
+        def embed_query(self, query):
+            return self.model.encode(query)
+    
     @st.cache_data(show_spinner=False)
     def load_models():
         model_utama = BERTopic.load("topic_model")
         model_sub_1 = BERTopic.load("sub_topic_model_1")
         model_sub_min1 = BERTopic.load("sub_topic_model_min1")
         
-        embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-
+        # Inisialisasi model SentenceTransformer dan bungkus dengan wrapper
+        st_model = SentenceTransformer("all-MiniLM-L6-v2")
+        embedding_model = SentenceTransformerWrapper(st_model)
+    
         model_utama.embedding_model = embedding_model
-        
         model_sub_1.embedding_model = embedding_model
-        
         model_sub_min1.embedding_model = embedding_model
-
+    
         return model_utama, model_sub_1, model_sub_min1
+
 
     topic_model, sub_topic_model_1, sub_topic_model_min1 = load_models()
 
