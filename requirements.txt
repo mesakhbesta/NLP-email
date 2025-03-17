@@ -1,15 +1,7 @@
 bertopic==0.16.4
-huggingface_hub
-numba==0.60.0
-hdbscan==0.8.40
-scikit-learn==1.2.2
-umap-learn==0.5.7
-numpy==1.26.4
 pandas==2.2.3
 Sastrawi==1.0.1
 joblib==1.4.2
 openpyxl
-torch
 sentence_transformers==3.4.1 
-pynndescent==0.5.13
 streamlit
