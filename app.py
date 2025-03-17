@@ -123,12 +123,12 @@ if df is not None:
     @st.cache_data(show_spinner=False)
     def load_models():
         repo_id = 'mesakhbesta/NLP_OJK'
-        model_utama = hf_hub_download(repo_id=repo_id, filename='bertopic_utama.joblib')
-        model_utama = joblib.load(model_utama)
-        model_sub_1 = hf_hub_download(repo_id=repo_id, filename='sub_topic_1.joblib')
-        model_sub_1 = joblib.load(model_sub_1)
-        model_sub_min1 = hf_hub_download(repo_id=repo_id, filename='sub_topic_min1.joblib')
-        model_sub_min1 = joblib.load(model_sub_min1)
+        model_utama = hf_hub_download(repo_id=repo_id, filename='topic_model')
+        model_utama = BERTopic.load(model_utama)
+        model_sub_1 = hf_hub_download(repo_id=repo_id, filename='sub_topic_model_1')
+        model_sub_1 = BERTopic.load(model_sub_1)
+        model_sub_min1 = hf_hub_download(repo_id=repo_id, filename='sub_topic_model_min1')
+        model_sub_min1 = BERTopic.load(model_sub_min1)
         return model_utama, model_sub_1, model_sub_min1
     topic_model, sub_topic_model_1, sub_topic_model_min1 = load_models()
     def classify_sub_topic_min1(sub_topic_model, data):
