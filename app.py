@@ -91,8 +91,9 @@ if df is not None:
         return text
     
     df['Cleaned_Complaint'] = df['Complaint'].apply(clean_text)
-    
-    # Define the list of words to remove
+
+
+# Define the list of words to remove
     words_to_remove = [
         "terima", "kasih", "mohon", "silakan", "untuk", "dan", "atau", "saya", "kami", 
         "helpdesk", "bapak", "ibu", "segera", "harap", "apakah", "kapan", "dapat", "tidak",
@@ -120,7 +121,7 @@ if df is not None:
         "ikut", "usaha", "dapat", "tahun", "kini", "lalu", "kendala", "ojk", "laku", "guna", "aplikasi", "atas",
         "radius", "prawiro", "jakarta", "pusat"
     ]
-    
+
     # Compile the regex pattern for word boundaries
     pattern = r'\b(?:' + '|'.join(map(re.escape, words_to_remove)) + r')\b'
     
@@ -128,11 +129,21 @@ if df is not None:
     def clean_text(text):
         # Apply the regex substitution to remove the specified words
         text = re.sub(pattern, "", text)
-        # Remove extra spaces caused by the word removal
+        
+        # Additional replacements as requested
+        text = text.lower()
+        text = re.sub(r"\bmasuk\b", "login", text)
+        text = re.sub(r"\blog-in\b", "login", text)
+        text = re.sub(r"\brenbis\b", "rencana bisnis", text)
+        text = re.sub(r"\bapkap\b", "ap kap", text)
+        text = re.sub(r"\baro\b", "administrator responsible officer", text)
+        text = re.sub(r"\bro\b", "responsible officer", text)
+        
+        # Remove extra spaces and strip any leading/trailing spaces
         text = re.sub(r'\s+', ' ', text).strip()
         return text
-    
-    # Apply the cleaning function to 'Cleaned_Complaint'
+
+# Apply the cleaning function to 'Cleaned_Complaint'
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].apply(clean_text)
 
     st.write("### Final Cleaned Complaint Data")
