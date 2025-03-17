@@ -17,11 +17,6 @@ from sentence_transformers import SentenceTransformer
 from umap import UMAP
 import asyncio
 
-# Pastikan event loop sudah ada
-try:
-    asyncio.get_event_loop()
-except RuntimeError:
-    asyncio.set_event_loop(asyncio.new_event_loop())
 
 # Sidebar setup
 st.sidebar.title("Aplikasi Klasifikasi Kendala 📧")
