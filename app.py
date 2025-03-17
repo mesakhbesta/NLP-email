@@ -119,7 +119,7 @@ if df is not None:
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bguest\b", "admin", regex=True)
 
     st.write(df)
-     st.sidebar.write("Unduh file yang telah diproses")
+    st.sidebar.write("Unduh file yang telah diproses")
     @st.cache_data
     def convert_df(df):
         return df.to_csv(index=False).encode('utf-8')
