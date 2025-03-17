@@ -138,16 +138,27 @@ if df is not None:
     words_to_remove = r"\b(terima|kasih|mohon|silakan|untuk|dan|atau|saya|kami|helpdesk|bapak|ibu|segera|harap|apakah|kapan|dapat|tidak|dan)\b"
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(words_to_remove, "", regex=True)
 
-    # Melatih model BERTopic baru menggunakan data yang telah dibersihkan
-    def train_topic_model(documents):
-        sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
-        topic_model = BERTopic(embedding_model=sentence_model)
-        topics, probs = topic_model.fit_transform(documents)
-        return topic_model, topics, probs
+    # UMAP model yang digunakan
+    umap_model = UMAP(
+        n_neighbors=10,
+        n_components=5,
+        min_dist=0.0,
+        metric='cosine',
+        low_memory=False,
+        random_state=1337
+    )
+
+    # Inisialisasi BERTopic dengan UMAP model
+    topic_model = BERTopic(
+        language="indonesian",
+        umap_model=umap_model,
+        calculate_probabilities=True
+    )
 
     with st.spinner("Melatih model BERTopic baru..."):
-        topic_model, topics, probs = train_topic_model(df['Cleaned_Complaint'].tolist())
-        df['Topic'] = topics
+        topic_model.fit(df['Cleaned_Complaint'].tolist())
+        topics = topic_model.get_topics()
+        df['Topic'] = topic_model.transform(df['Cleaned_Complaint'].tolist())
 
     topic_counts = df['Topic'].value_counts().reset_index()
     topic_counts.columns = ['Topic', 'Count']
