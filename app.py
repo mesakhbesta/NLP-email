@@ -91,7 +91,7 @@ if df is not None:
         return text
     
     df['Cleaned_Complaint'] = df['Complaint'].apply(clean_text)
-
+    
     # Define the list of words to remove
     words_to_remove = [
         "terima", "kasih", "mohon", "silakan", "untuk", "dan", "atau", "saya", "kami", 
@@ -134,17 +134,7 @@ if df is not None:
     
     # Apply the cleaning function to 'Cleaned_Complaint'
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].apply(clean_text)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.lower()
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(words_to_remove, "", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bmasuk\b", "login", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\blog-in\b", "login", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\brenbis\b", "rencana bisnis", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bapkap\b", "ap kap", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\baro\b", "administrator responsible officer", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bro\b", "responsible officer", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\s+", " ", regex=True).str.strip()
 
-    # Display cleaned complaints
     st.write("### Final Cleaned Complaint Data")
     st.dataframe(df[['Incident Number', 'Summary', 'Cleaned_Complaint']].head(4))
 
