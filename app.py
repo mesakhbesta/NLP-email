@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
 import re
-from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 import joblib
 from bertopic import BERTopic
 from huggingface_hub import hf_hub_download
+from sentence_transformers import SentenceTransformer
+from umap import UMAP
 import asyncio
 
 # Pastikan event loop sudah ada
@@ -58,7 +59,9 @@ if df is not None:
     def extract_complaint(text):
         if not isinstance(text, str):
             return "Bagian komplain tidak ditemukan."
-        start_patterns = [r"PERHATIAN: E-mail ini berasal dari pihak di luar OJK.*?attachment.*?link.*?yang terdapat pada e-mail ini."]
+        start_patterns = [
+            r"PERHATIAN: E-mail ini berasal dari pihak di luar OJK.*?attachment.*?link.*?yang terdapat pada e-mail ini."
+        ]
         end_patterns = [
             r"(From\s*.*?From|Best regards|Salam|Atas perhatiannya|Regards|Best Regards|Mohon\s*untuk\s*melengkapi\s*data\s*.*tabel\s*dibawah).*",
             r"From:\s*Direktorat\s*Pelaporan\s*Data.*"
@@ -118,6 +121,7 @@ if df is not None:
     df['Complaint'] = df['Complaint'].str.replace(subject_pattern, "", regex=True)
     
     # Pembersihan teks menggunakan stopword dari Sastrawi
+    from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
     stopword_factory = StopWordRemoverFactory()
     stopwords = stopword_factory.get_stop_words()
 
@@ -131,23 +135,7 @@ if df is not None:
     df['Cleaned_Complaint'] = df['Complaint'].apply(clean_text)
 
     # Menghapus kata-kata yang tidak penting
-    words_to_remove = r"\b(" \
-                      "terima|kasih|mohon|silakan|untuk|dan|atau|saya|kami|helpdesk|bapak|ibu|segera|harap|apakah|kapan|dapat|tidak|" \
-                      "dana|pensiun|sampaikan|konvensional|djakarta|delta|asuransi|ventura|modal|absensi|arahannya|" \
-                      "bapak|ibu|berikut|selalu|maksud|mrisikodapenbuncoid|sistem|mencoba|dibawah|lbbpr|kejadian|" \
-                      "arahan|lamp|berhasil|ringkasan|publikasi|sosialisasi|pelaporanid|sultra|penyampaian|" \
-                      "surat|yg|satyadhika|bakti|penamaan|menjumpai|progo|group|diisi|terh|login|file|gambar|screenshot|panduan|" \
-                      "perhutani|selfassessment|umum|status|keperluan|ulang|publik|" \
-                      "lembaga|nomor|petunjuk|dikirimkan|maksud|astra|gb|mesin|" \
-                      "terjadi|selfassessment|tanya|reliance|" \
-                      "unit|terdaftar|jl|ii|put|nama|muncul|dimaksud|kegiatan|waktu|desember|pkap|life|" \
-                      "mengenai|monitoring|ditinjau|dosbnb|pmo|wisma|apuppt|pergada|tombol|bpd|oss|insidentil|" \
-                      "psak|pelaksanaan|perkembangan|format|berdasarkan|luar|penguna|hpt|ppt|bambu|nasabah|team|marga|" \
-                      "cipayun|star|dipo|finance|menyampaikan|lapor|jasa|pengawasan|dokumen|asuransi|rencana|permohonan|" \
-                      "indonesia|allianz|keuangan|otoritas|no|penggunaan|antifraud|penerapan|strategi|fraud|anti|realisasi|saf|tersebut|" \
-                      "nya|data|terdapat|periode|melalui|perusahaan|sesuai|melakukan|hak|komplek|laporan|pelaporan|modul|apolo|sebut|" \
-                      "terap|email|pt|mohon|sampai|ikut|usaha|dapat|tahun|kini|lalu|kendala|ojk|laku|guna|aplikasi|atas|radius|prawiro|" \
-                      "jakarta pusat)\b"
+    words_to_remove = r"\b(terima|kasih|mohon|silakan|untuk|dan|atau|saya|kami|helpdesk|bapak|ibu|segera|harap|apakah|kapan|dapat|tidak|dana|pensiun|sampaikan|konvensional|djakarta|delta|asuransi|ventura|modal|absensi|arahannya|berikut|selalu|maksud|mrisikodapenbuncoid|sistem|mencoba|dibawah|lbbpr|kejadian|arahan|lamp|berhasil|ringkasan|publikasi|sosialisasi|pelaporanid|sultra|penyampaian|surat|yg|satyadhika|bakti|penamaan|menjumpai|progo|group|diisi|terh|login|file|gambar|screenshot|panduan|perhutani|selfassessment|umum|status|keperluan|ulang|publik|lembaga|nomor|petunjuk|dikirimkan|maksud|astra|gb|mesin|terjadi|selfassessment|tanya|reliance|unit|terdaftar|jl|ii|put|nama|muncul|dimaksud|kegiatan|waktu|desember|pkap|life|mengenai|monitoring|ditinjau|dosbnb|pmo|wisma|apuppt|pergada|tombol|bpd|oss|insidentil|psak|pelaksanaan|perkembangan|format|berdasarkan|luar|penguna|hpt|ppt|bambu|nasabah|team|marga|cipayun|star|dipo|finance|menyampaikan|lapor|jasa|pengawasan|dokumen|asuransi|rencana|permohonan|indonesia|allianz|keuangan|otoritas|no|penggunaan|antifraud|penerapan|strategi|fraud|anti|realisasi|saf|tersebut|nya|data|terdapat|periode|melalui|perusahaan|sesuai|melakukan|hak|komplek|laporan|pelaporan|modul|apolo|sebut|terap|email|pt|mohon|sampai|ikut|usaha|dapat|tahun|kini|lalu|kendala|ojk|laku|guna|aplikasi|atas|radius|prawiro|jakarta pusat)\b"
     
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.lower()
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(words_to_remove, "", regex=True)
@@ -166,13 +154,18 @@ if df is not None:
     # Fungsi untuk memuat model (menggunakan cache agar tidak dimuat ulang setiap kali)
     @st.cache_data(show_spinner=False)
     def load_models():
-        repo_id = 'mesakhbesta/NLP_OJK'
-        model_utama_path = hf_hub_download(repo_id=repo_id, filename='topic_model')
-        model_utama = BERTopic.load(model_utama_path)
-        model_sub_1_path = hf_hub_download(repo_id=repo_id, filename='sub_topic_model_1')
-        model_sub_1 = BERTopic.load(model_sub_1_path)
-        model_sub_min1_path = hf_hub_download(repo_id=repo_id, filename='sub_topic_model_min1')
-        model_sub_min1 = BERTopic.load(model_sub_min1_path)
+        model_utama = BERTopic.load(topic_model)
+        model_sub_1 = BERTopic.load(sub_topic_model_1)
+        model_sub_min1 = BERTopic.load(sub_topic_model_min1)
+        
+        embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+        model_utama.embedding_model = embedding_model
+        
+        model_sub_1.embedding_model = embedding_model
+        
+        model_sub_min1.embedding_model = embedding_model
+
         return model_utama, model_sub_1, model_sub_min1
 
     topic_model, sub_topic_model_1, sub_topic_model_min1 = load_models()
