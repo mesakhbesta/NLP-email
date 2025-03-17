@@ -2,17 +2,11 @@ import os
 os.environ["STREAMLIT_FILE_WATCHER_TYPE"] = "none"  # Nonaktifkan file watcher Streamlit
 
 import asyncio
-try:
-    loop = asyncio.get_running_loop()
-except RuntimeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
 import streamlit as st
 import pandas as pd
 import re
 import joblib
 from bertopic import BERTopic
-from huggingface_hub import hf_hub_download
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
 import asyncio
@@ -141,111 +135,29 @@ if df is not None:
     df['Cleaned_Complaint'] = df['Complaint'].apply(clean_text)
 
     # Menghapus kata-kata yang tidak penting
-    words_to_remove = r"\b(terima|kasih|mohon|silakan|untuk|dan|atau|saya|kami|helpdesk|bapak|ibu|segera|harap|apakah|kapan|dapat|tidak|dana|pensiun|sampaikan|konvensional|djakarta|delta|asuransi|ventura|modal|absensi|arahannya|berikut|selalu|maksud|mrisikodapenbuncoid|sistem|mencoba|dibawah|lbbpr|kejadian|arahan|lamp|berhasil|ringkasan|publikasi|sosialisasi|pelaporanid|sultra|penyampaian|surat|yg|satyadhika|bakti|penamaan|menjumpai|progo|group|diisi|terh|login|file|gambar|screenshot|panduan|perhutani|selfassessment|umum|status|keperluan|ulang|publik|lembaga|nomor|petunjuk|dikirimkan|maksud|astra|gb|mesin|terjadi|selfassessment|tanya|reliance|unit|terdaftar|jl|ii|put|nama|muncul|dimaksud|kegiatan|waktu|desember|pkap|life|mengenai|monitoring|ditinjau|dosbnb|pmo|wisma|apuppt|pergada|tombol|bpd|oss|insidentil|psak|pelaksanaan|perkembangan|format|berdasarkan|luar|penguna|hpt|ppt|bambu|nasabah|team|marga|cipayun|star|dipo|finance|menyampaikan|lapor|jasa|pengawasan|dokumen|asuransi|rencana|permohonan|indonesia|allianz|keuangan|otoritas|no|penggunaan|antifraud|penerapan|strategi|fraud|anti|realisasi|saf|tersebut|nya|data|terdapat|periode|melalui|perusahaan|sesuai|melakukan|hak|komplek|laporan|pelaporan|modul|apolo|sebut|terap|email|pt|mohon|sampai|ikut|usaha|dapat|tahun|kini|lalu|kendala|ojk|laku|guna|aplikasi|atas|radius|prawiro|jakarta pusat)\b"
-    
+    words_to_remove = r"\b(terima|kasih|mohon|silakan|untuk|dan|atau|saya|kami|helpdesk|bapak|ibu|segera|harap|apakah|kapan|dapat|tidak|dan)\b"
     df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(words_to_remove, "", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bmasuk\b", "login", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\blog-in\b", "login", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\brenbis\b", "rencana bisnis", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bapkap\b", "ap kap", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\baro\b", "administrator responsible officer", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\bro\b", "responsible officer", regex=True)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].str.replace(r"\s+", " ", regex=True).str.strip()
-    # Pastikan teks benar-benar bersih dengan menerapkan fungsi clean_text lagi (jika diperlukan)
-    df['Cleaned_Complaint'] = df['Cleaned_Complaint'].apply(clean_text)
 
-    st.write("### Final Cleaned Complaint Data")
-    st.dataframe(df[['Incident Number', 'Summary', 'Cleaned_Complaint']].head(4))
+    # Melatih model BERTopic baru menggunakan data yang telah dibersihkan
+    def train_topic_model(documents):
+        sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
+        topic_model = BERTopic(embedding_model=sentence_model)
+        topics, probs = topic_model.fit_transform(documents)
+        return topic_model, topics, probs
 
-    # Fungsi untuk memuat model (gunakan cache agar tidak dimuat ulang setiap kali)
-    # Tambahkan wrapper untuk SentenceTransformer
-    class SentenceTransformerWrapper:
-        def __init__(self, model):
-            self.model = model
-    
-        def embed_documents(self, documents, **kwargs):
-            kwargs.pop('verbose', None)
-            return self.model.encode(documents, show_progress_bar=False, **kwargs)
-    
-        def embed_query(self, query, **kwargs):
-            kwargs.pop('verbose', None)
-            return self.model.encode(query, **kwargs)
+    with st.spinner("Melatih model BERTopic baru..."):
+        topic_model, topics, probs = train_topic_model(df['Cleaned_Complaint'].tolist())
+        df['Topic'] = topics
 
-    @st.cache_data(show_spinner=False)
-    def load_models():
-        model_utama = BERTopic.load("topic_model")
-        model_sub_1 = BERTopic.load("sub_topic_model_1")
-        model_sub_min1 = BERTopic.load("sub_topic_model_min1")
-        
-        # Inisialisasi model SentenceTransformer dan bungkus dengan wrapper
-        st_model = SentenceTransformer("all-MiniLM-L6-v2")
-        embedding_model = SentenceTransformerWrapper(st_model)
-    
-        model_utama.embedding_model = embedding_model
-        model_sub_1.embedding_model = embedding_model
-        model_sub_min1.embedding_model = embedding_model
-    
-        return model_utama, model_sub_1, model_sub_min1
-
-    topic_model, sub_topic_model_1, sub_topic_model_min1 = load_models()
-
-    def classify_sub_topic_min1(sub_topic_model, data):
-        sub_topics, sub_probs = sub_topic_model.transform(data)
-        if sub_topics[0] == 2:
-            return 2
-        else:
-            return -1
-
-    def classify_sub_topic_1(sub_topic_model, data):
-        sub_topics, sub_probs = sub_topic_model.transform(data)
-        return sub_topics[0]
-
-    def get_final_topic(complaint):
-        topics, probs = topic_model.transform([complaint])
-        main_topic = topics[0]
-        if main_topic == -1:
-            sub_topic = classify_sub_topic_min1(sub_topic_model_min1, [complaint])
-            if sub_topic == 2:
-                return 'Kendala Install Aplikasi Client'
-            else:
-                return 'Outlier'
-        elif main_topic == 1:
-            sub_topic = classify_sub_topic_1(sub_topic_model_1, [complaint])
-            if sub_topic == 0:
-                return 'Kendala Akses Aplikasi/Authorized Error'
-            elif sub_topic == 1:
-                return 'Lupa Password/Reset Password'
-            elif sub_topic == 2:
-                return 'Kendala Username Salah'
-        elif main_topic == 0:
-            return 'Permintaan Akses ARO/RO'
-        elif main_topic == 2:
-            return 'Kesalahan File/ Validasi'
-        elif main_topic == 3:
-            return 'Perpanjangan Waktu Pengumpulan'
-        elif main_topic == 4:
-            return 'Gagal Upload Pelaporan'
-        elif main_topic == 5:
-            return 'Kendala pelaporan APOLO'
-        return 'Unknown'
-
-    @st.cache_resource(show_spinner=False)
-    def classify_complaints(data):
-        data['Topic_Name'] = data['Cleaned_Complaint'].apply(get_final_topic)
-        topic_counts = data.groupby('Topic_Name').size().reset_index(name='Count')
-        data['Topic_Name_Count'] = data['Topic_Name'].map(topic_counts.set_index('Topic_Name')['Count'])
-        return data, topic_counts
-
-    with st.spinner("Mengklasifikasi complaint..."):
-        df, topic_counts = classify_complaints(df)
-
+    topic_counts = df['Topic'].value_counts().reset_index()
+    topic_counts.columns = ['Topic', 'Count']
     st.write("#### Distribusi Topik Final:")
     st.dataframe(topic_counts)
 
-    unique_topics = sorted(df['Topic_Name'].unique().tolist())
+    unique_topics = sorted(df['Topic'].unique().tolist())
     selected_topic = st.selectbox("Pilih Topik untuk ditampilkan", ["Semua Topik"] + unique_topics)
     if selected_topic != "Semua Topik":
-        df_filtered = df[df['Topic_Name'] == selected_topic]
+        df_filtered = df[df['Topic'] == selected_topic]
     else:
         df_filtered = df
 
