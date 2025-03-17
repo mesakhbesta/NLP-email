@@ -154,9 +154,9 @@ if df is not None:
     # Fungsi untuk memuat model (menggunakan cache agar tidak dimuat ulang setiap kali)
     @st.cache_data(show_spinner=False)
     def load_models():
-        model_utama = BERTopic.load(topic_model)
-        model_sub_1 = BERTopic.load(sub_topic_model_1)
-        model_sub_min1 = BERTopic.load(sub_topic_model_min1)
+        model_utama = BERTopic.load("topic_model")
+        model_sub_1 = BERTopic.load("sub_topic_model_1")
+        model_sub_min1 = BERTopic.load("sub_topic_model_min1")
         
         embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
